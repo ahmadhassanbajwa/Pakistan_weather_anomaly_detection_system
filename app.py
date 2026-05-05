@@ -33,7 +33,7 @@ st.markdown("""
 def build_anomaly_aware_model():
     # BULLETPROOF FILE LOADING: Dynamically get the absolute path to the CSV
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    csv_path = os.path.join(current_dir, 'pakistan_weather_clean_final.csv')
+    csv_path = os.path.join(current_dir, 'pakistan_weather.csv')
     
     # Load the dataset using the absolute path
     df = pd.read_csv(csv_path)
