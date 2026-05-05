@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import os
 from scipy import stats
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import OneHotEncoder
@@ -30,11 +31,14 @@ st.markdown("""
 # --- SECTION 2: DATA PREPROCESSING AND REGIONAL MODELING ---
 @st.cache_resource
 def build_anomaly_aware_model():
-    # Loading the dataset verbatim as per requirements
-    df = pd.read_csv('pakistan_weather_clean_final.csv')
+    # BULLETPROOF FILE LOADING: Dynamically get the absolute path to the CSV
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    csv_path = os.path.join(current_dir, 'pakistan_weather_clean_final.csv')
+    
+    # Load the dataset using the absolute path
+    df = pd.read_csv(csv_path)
     
     # 1. TACKLING SKEWNESS: Calculate local statistics per city
-    # This ensures an anomaly is judged relative to the local climate distribution
     city_baselines = df.groupby('city')['tavg'].agg(['mean', 'std']).to_dict('index')
     
     # 2. FEATURE ENGINEERING: Apply Regional Normalization (Local Z-Scores)
@@ -45,13 +49,12 @@ def build_anomaly_aware_model():
     df['local_anomaly_score'] = df.apply(get_local_z, axis=1)
     
     # 3. TACKLING VARIANCE: One-Hot Encoding for City Identifiers
-    # This allows the regression model to assign weights based on geography
     encoder = OneHotEncoder(sparse_output=False)
     city_encoded = encoder.fit_transform(df[['city']])
     city_cols = encoder.get_feature_names_out(['city'])
     city_df = pd.DataFrame(city_encoded, columns=city_cols)
     
-    # 4. REGRESSION MODELING: humidity, pressure, wind, local anomaly, and city bits
+    # 4. REGRESSION MODELING: features include local anomaly and city bits
     X = pd.concat([df[['humidity', 'pressure', 'wind_speed', 'local_anomaly_score']], city_df], axis=1)
     y = df['tavg']
     
@@ -65,7 +68,7 @@ model, encoder, city_baselines, city_cols = build_anomaly_aware_model()
 
 # --- SECTION 3: INTERACTIVE USER INTERFACE ---
 st.title("🌦️ Regional Anomaly-Aware Predictor")
-st.markdown(f"**Developer:** Evaluators | **Framework:** AI-Powered Regression Analysis")
+st.markdown(f"**Developer:** Ahmad Hassan | **Framework:** AI-Powered Regression Analysis")
 
 # Layout Columns
 col1, col2 = st.columns([1, 1], gap="large")
@@ -74,7 +77,7 @@ with col1:
     st.subheader("Control Panel")
     st.info("Adjust the sliders to simulate real-time weather conditions for a specific region.")
     
-    # Selection of City (Handles the "Depends on City" requirement)
+    # Selection of City
     target_city = st.selectbox("Select Target City", options=sorted(list(city_baselines.keys())))
     c_stats = city_baselines[target_city]
     
@@ -99,7 +102,12 @@ if st.button("Generate Regional Analysis"):
     
     # 3. Construct the input vector matching the training features
     input_vector = np.hstack([[hum, pres, wind, local_z], encoded_bits[0]])
-    prediction = model.predict([input_vector])[0]
+    
+    # 4. Create DataFrame with proper feature names to avoid warnings
+    feature_names = ['humidity', 'pressure', 'wind_speed', 'local_anomaly_score'] + list(city_cols)
+    input_df = pd.DataFrame([input_vector], columns=feature_names)
+    
+    prediction = model.predict(input_df)[0]
     
     with col2:
         st.subheader("Analysis Output")
@@ -118,7 +126,7 @@ if st.button("Generate Regional Analysis"):
             st.success(f"✅ NORMAL LOCAL PATTERN (Z-Score: {local_z:.2f})")
             st.markdown(f"**Insight:** This input aligns with the historical statistical distribution for **{target_city}**.")
 
-        # Documentation of Statistical Process (For project requirements)
+        # Documentation of Statistical Process
         with st.expander("View Statistical Methodology"):
             st.write(f"""
             - **Distribution:** KDE analysis confirmed skewed/multimodal distributions in Pakistan.
@@ -128,5 +136,4 @@ if st.button("Generate Regional Analysis"):
 else:
     with col2:
         st.write("---")
-        st.image("https://img.icons8.com/clouds/200/000000/partly-cloudy-day.png", width=150)
         st.markdown("Select parameters and click **Generate** to run the prediction model.")
