@@ -19,7 +19,7 @@ st.markdown("""
 @st.cache_resource
 def get_model():
     # Referencing the file verbatim as required
-    df = pd.read_csv('pakistan_weather_clean_final.csv')
+    df = pd.read_csv('pakistan_weather.csv')
     
     # Calculate dataset statistics for Anomaly Detection (Option 2)
     m, s = df['tavg'].mean(), df['tavg'].std()
@@ -39,7 +39,7 @@ model, t_mean, t_std = get_model()
 
 # 3. Frontend UI: Interactive Dashboard
 st.title("🌦️ Weather Anomaly Dashboard")
-st.markdown(f"**Developer:** Ahmad Hassan | **Data Source:** pakistan_weather_clean_final.csv")
+st.markdown(f"**Developer:** Ahmad Hassan | **Data Source:** pakistan_weather.csv")
 
 # Layout columns
 col1, col2 = st.columns([1, 1], gap="large")
