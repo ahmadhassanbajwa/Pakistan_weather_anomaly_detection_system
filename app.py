@@ -22,7 +22,7 @@ model, t_mean, t_std = get_model()
 
 # 3. Vibrant UI (Frontend)
 st.title("🌦️ Weather Anomaly Dashboard")
-st.write("Developed by Ahmad Hassan")
+st.write("Developed by Evaluators")
 
 col1, col2 = st.columns([1, 1])
 
