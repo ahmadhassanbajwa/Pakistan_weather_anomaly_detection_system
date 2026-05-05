@@ -9,25 +9,48 @@ from sklearn.preprocessing import OneHotEncoder
 # --- SECTION 1: PAGE CONFIGURATION AND STYLING ---
 st.set_page_config(page_title="Pakistan Regional Weather Predictor", layout="wide")
 
-# Custom CSS for a modern, vibrant dark-themed dashboard
+# Custom CSS for a modern, vibrant dashboard with fixed text visibility
 st.markdown("""
     <style>
-    .main { background-color: #0e1117; color: white; }
-    .stMetric { 
-        border: 1px solid #30363d; 
-        border-radius: 15px; 
-        padding: 20px; 
-        background: #161b22; 
-        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-    }
-    div[data-testid="stExpander"] {
+    /* Metric Card Background */
+    div[data-testid="metric-container"] {
         background-color: #161b22;
         border: 1px solid #30363d;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    /* Metric Label (e.g., "Predicted Lahore Temperature") */
+    div[data-testid="metric-container"] label p {
+        color: #8b949e !important; /* Light grey for better contrast */
+    }
+    
+    /* Metric Value (e.g., "36.85 °C") */
+    div[data-testid="metric-container"] div[data-testid="stMetricValue"] > div {
+        color: #ffffff !important; /* Pure white for the main number */
+    }
+
+    /* Expander Container Styling */
+    div[data-testid="stExpander"] details {
+        border: 1px solid #30363d;
         border-radius: 10px;
+        overflow: hidden;
+    }
+    
+    /* Expander Body Background */
+    div[data-testid="stExpanderDetails"] {
+        background-color: #161b22;
+    }
+    
+    /* Force Expander Body Text to White */
+    div[data-testid="stExpanderDetails"] p,
+    div[data-testid="stExpanderDetails"] li,
+    div[data-testid="stExpanderDetails"] span {
+        color: #ffffff !important; /* Pure white for bullet points and text */
     }
     </style>
     """, unsafe_allow_html=True)
-
 # --- SECTION 2: DATA PREPROCESSING AND REGIONAL MODELING ---
 @st.cache_resource
 def build_anomaly_aware_model():
