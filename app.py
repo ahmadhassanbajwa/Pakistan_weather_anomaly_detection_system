@@ -39,7 +39,7 @@ model, t_mean, t_std = get_model()
 
 # 3. Frontend UI: Interactive Dashboard
 st.title("🌦️ Weather Anomaly Dashboard")
-st.markdown(f"**Developer:** Ahmad Hassan | **Data Source:** pakistan_weather.csv")
+st.markdown(f"**Developer:** Evaluators | **Data Source:** pakistan_weather.csv")
 
 # Layout columns
 col1, col2 = st.columns([1, 1], gap="large")
