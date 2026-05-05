@@ -91,7 +91,7 @@ model, encoder, city_baselines, city_cols = build_anomaly_aware_model()
 
 # --- SECTION 3: INTERACTIVE USER INTERFACE ---
 st.title("🌦️ Regional Anomaly-Aware Predictor")
-st.markdown(f"**Developer:** Ahmad Hassan | **Framework:** AI-Powered Regression Analysis")
+st.markdown(f"**Developer:** Evaluators | **Framework:** AI-Powered Regression Analysis")
 
 # Layout Columns
 col1, col2 = st.columns([1, 1], gap="large")
