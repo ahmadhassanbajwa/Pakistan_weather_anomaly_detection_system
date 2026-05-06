@@ -8,29 +8,52 @@ from sklearn.preprocessing import OneHotEncoder
 import warnings
 warnings.filterwarnings('ignore')
 
-# --- SECTION 1: PAGE CONFIGURATION & ENHANCED GUI CSS ---
-st.set_page_config(page_title="Pakistan Weather Predictor", layout="wide", page_icon="🌦️")
+# --- SECTION 1: PAGE CONFIGURATION & PREMIUM CSS ---
+st.set_page_config(page_title="Pakistan Weather Anomaly Engine", layout="wide", page_icon="⚡")
+
 st.markdown("""
     <style>
-    .main { background-color: #0d1117; color: #e6edf3; }
+    /* Global Theme */
+    .main { background-color: #0b0f19; color: #e2e8f0; font-family: 'Inter', sans-serif; }
+    
+    /* Sidebar Styling */
+    [data-testid="stSidebar"] { background-color: #111827; border-right: 1px solid #1f2937; }
+    
+    /* KPI Metric Cards (Glassmorphism) */
     div[data-testid="metric-container"] {
-        background: linear-gradient(145deg, #161b22, #1c2128);
-        border: 1px solid #30363d; border-radius: 12px;
-        padding: 20px; box-shadow: 0 8px 16px rgba(0,0,0,0.15);
-        transition: transform 0.2s ease;
+        background: linear-gradient(145deg, #1f2937, #111827);
+        border: 1px solid #374151; 
+        border-radius: 16px;
+        padding: 24px; 
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease;
     }
-    div[data-testid="metric-container"]:hover { transform: translateY(-3px); }
-    div[data-testid="metric-container"] label p { color: #8b949e !important; font-weight: 600; }
-    div[data-testid="metric-container"] div[data-testid="stMetricValue"] > div { color: #58a6ff !important; font-weight: 700;}
-    div[data-testid="stExpander"] details { border: 1px solid #30363d; border-radius: 10px; overflow: hidden; }
-    div[data-testid="stExpanderDetails"] { background-color: #161b22; color: #c9d1d9 !important; }
-    div[data-testid="stExpanderDetails"] * { color: #c9d1d9 !important; }
-    h1, h2, h3 { color: #ffffff !important; }
-    .stAlert { border-radius: 10px !important; }
+    div[data-testid="metric-container"]:hover { 
+        transform: translateY(-4px); 
+        box-shadow: 0 15px 35px rgba(0,0,0,0.4); 
+        border-color: #3b82f6;
+    }
+    
+    /* Metric Typography */
+    div[data-testid="metric-container"] label p { color: #9ca3af !important; font-weight: 600; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    div[data-testid="metric-container"] div[data-testid="stMetricValue"] > div { color: #60a5fa !important; font-weight: 800; font-size: 2.2rem;}
+    
+    /* Alerts and Info Boxes */
+    .stAlert { border-radius: 12px !important; border: none !important; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    
+    /* Expanders */
+    div[data-testid="stExpander"] details { border: 1px solid #374151; border-radius: 12px; overflow: hidden; background: #111827; }
+    div[data-testid="stExpanderDetails"] { background-color: #111827; color: #d1d5db !important; padding: 20px; }
+    div[data-testid="stExpanderDetails"] * { color: #d1d5db !important; }
+    
+    /* Headers */
+    h1 { color: #f8fafc !important; font-weight: 800; padding-bottom: 0.5rem; }
+    h2, h3 { color: #e2e8f0 !important; font-weight: 700; }
+    hr { border-color: #374151; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- SECTION 2: BACKEND ENGINE ---
+# --- SECTION 2: BACKEND ENGINE (Cached for Speed) ---
 @st.cache_resource
 def build_anomaly_aware_model():
     df = pd.read_csv('pakistan_weather.csv')
@@ -80,66 +103,96 @@ def build_anomaly_aware_model():
 
 model, encoder, gmm, gmm_threshold, baselines, cat_cols = build_anomaly_aware_model()
 
-# --- SECTION 3: FRONTEND UI ---
-st.title("🌦️ Regional Anomaly-Aware Predictor")
-st.markdown("**Developer:** Evaluators | **Framework:** GMM Anomaly Engine & Poisson Mapping")
-col1, col2 = st.columns([1.1, 1], gap="large")
-
-with col1:
-    st.subheader("Control Panel")
-    c1, c2 = st.columns(2)
-    target_city = c1.selectbox("Target City", sorted(baselines.keys()))
-    target_season = c2.selectbox("Current Season", ["Winter", "Spring", "Summer", "Autumn"])
+# --- SECTION 3: SIDEBAR CONTROLS ---
+with st.sidebar:
+    st.image("https://cdn-icons-png.flaticon.com/512/1146/1146860.png", width=60) # Simple generic weather icon
+    st.title("System Controls")
+    st.markdown("Enter real-time telemetry below.")
+    st.divider()
+    
+    target_city = st.selectbox("📍 Target Region", sorted(baselines.keys()))
+    target_season = st.selectbox("📅 Current Season", ["Winter", "Spring", "Summer", "Autumn"])
+    
+    st.divider()
+    st.markdown("### Environmental Sensors")
     c_stats = baselines[target_city]['seasons'].get(target_season, {'mean':0, 'std':0, 'ci_lower':0, 'ci_upper':0})
     
-    st.info(f"📊 **Context:** The 95% Confidence Interval for **{target_city}** in **{target_season}** is historically bounded between **{c_stats['ci_lower']:.2f}°C** and **{c_stats['ci_upper']:.2f}°C**.")
-    
+    prev_temp = st.number_input(f"Current Temp in {target_city} (°C)", value=float(round(c_stats['mean'], 1)), step=0.1)
+    precip = st.number_input("Precipitation (mm)", value=0.0, step=1.0)
     hum = st.slider("Humidity (%)", 0, 100, 60)
     pres = st.slider("Pressure (hPa)", 980.0, 1050.0, 1011.0, 0.1)
     wind = st.slider("Wind Speed (km/h)", 0.0, 60.0, 12.0, 0.1)
-    precip = st.slider("Precipitation (mm)", 0.0, 250.0, 0.0, 1.0)
-    prev_temp = st.slider(f"Current Avg Temp in {target_city} (°C)", -25.0, 55.0, float(round(c_stats['mean'], 1)), 0.1)
+    
+    st.divider()
+    run_engine = st.button("🚀 Execute Analysis", type="primary", use_container_width=True)
 
-# --- SECTION 4: PREDICTION & LOGIC ---
-if st.button("Generate Regional Analysis", type="primary", use_container_width=True):
-    # Live Scoring & Prediction
+# --- SECTION 4: MAIN DASHBOARD CANVAS ---
+st.title("⚡ Regional Weather Anomaly Engine")
+st.markdown("**Developed by:** Evaluators | **Framework:** GMM Probability & Poisson Distribution Matrix")
+st.divider()
+
+if run_engine:
+    # 1. Background Calculations
     in_gmm = -gmm.score_samples(np.array([[prev_temp]]))[0]
     in_cat = encoder.transform(pd.DataFrame([[target_city, target_season]], columns=['city', 'season']))
     in_vec = np.hstack([[hum, pres, wind, in_gmm], in_cat[0]])
     pred = model.predict(pd.DataFrame([in_vec], columns=['humidity', 'pressure', 'wind_speed', 'gmm_score'] + cat_cols))[0]
     sz = abs((prev_temp - c_stats['mean']) / c_stats['std']) if c_stats['std'] > 0 else 0.0
     
-    with col2:
-        st.subheader("Analysis Output")
-        m1, m2 = st.columns(2)
-        m1.metric(f"Predicted {target_city} Temp", f"{pred:.2f} °C")
-        m2.metric("Seasonal Z-Score", f"{sz:.2f} σ")
+    # 2. KPI Top Row
+    st.markdown("### Live Telemetry Overview")
+    kpi1, kpi2, kpi3 = st.columns(3)
+    kpi1.metric("Predicted Baseline Temp", f"{pred:.2f} °C", delta=f"{prev_temp - pred:.2f} °C Variance", delta_color="inverse")
+    kpi2.metric("Seasonal Z-Score", f"{sz:.2f} σ")
+    kpi3.metric("Global Rarity (GMM)", f"{in_gmm:.2f}", help="Negative Log-Likelihood. Higher means rarer.")
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # 3. Alert Center (Cascading Logic)
+    st.markdown("### 🚨 Threat Detection Center")
+    
+    # Track if any alerts triggered to show an "All Clear" if needed
+    alert_triggered = False
+    
+    # A. Temperature Severity
+    if in_gmm > gmm_threshold:
+        st.error(f"**CRITICAL CLIMATE EVENT:** {prev_temp}°C ranks in the top 0.5% of extreme probabilities country-wide. (GMM Score: {in_gmm:.2f})")
+        alert_triggered = True
+    elif sz > 3.0:
+        st.error(f"**SEVERE LOCAL ANOMALY:** {prev_temp}°C is a massive statistical outlier exceeding the 3σ threshold for {target_city} ({target_season}).")
+        alert_triggered = True
+    elif sz > 2.0:
+        st.warning(f"**LOCAL SEASONAL DEVIATION:** {prev_temp}°C exceeds the 2σ boundary for normal {target_season} patterns.")
+        alert_triggered = True
         
-        # Cascading Anomaly Tiers
-        if in_gmm > gmm_threshold:
-            st.error(f"🚨 **EXTREME CLIMATE EVENT** (GMM Score: {in_gmm:.2f})\n\nThis temperature ranks in the top 0.5% of extreme probabilities country-wide.")
-        elif sz > 3.0:
-            st.error(f"⚠️ **SEVERE LOCAL ANOMALY**\n\n{prev_temp}°C is a massive statistical outlier exceeding the 3σ threshold for {target_city} ({target_season}).")
-        elif sz > 2.0:
-            st.warning(f"⚠️ **LOCAL SEASONAL DEVIATION**\n\n{prev_temp}°C exceeds the 2σ standard deviation boundary for normal {target_season} patterns.")
-        else:
-            st.success(f"✅ **NORMAL LOCAL PATTERN**\n\nTemperature aligns securely with historical variance for {target_city}.")
+    # B. Precipitation Check (Poisson)
+    if precip > baselines[target_city]['rain_99th'] and precip > 0:
+        st.error(f"**FLOOD / MONSOON WARNING:** {precip}mm violently exceeds the 99th percentile historical limit ({baselines[target_city]['rain_99th']:.1f}mm) for {target_city}.")
+        alert_triggered = True
+        
+    # C. Pressure Storm Warning
+    if pres < (baselines[target_city]['pres_mean'] - 2*baselines[target_city]['pres_std']):
+        st.warning(f"**SEVERE STORM RISK:** Atmospheric pressure ({pres} hPa) is >2σ below local norms. High correlation with incoming severe weather.")
+        alert_triggered = True
+        
+    # D. All Clear
+    if not alert_triggered:
+        st.success(f"**ALL CLEAR:** Current telemetry aligns securely with historical variance for {target_city} in {target_season}. No anomalies detected.")
 
-        # Multi-variable Environmental Checks
-        if precip > baselines[target_city]['rain_99th'] and precip > 0:
-            st.error(f"🌧️ **FLOOD/MONSOON WARNING**\n\n{precip}mm violently exceeds the 99th percentile historical Poisson limit ({baselines[target_city]['rain_99th']:.1f}mm).")
-        if pres < (baselines[target_city]['pres_mean'] - 2*baselines[target_city]['pres_std']):
-            st.warning(f"🌪️ **SEVERE STORM RISK**\n\nAtmospheric pressure is >2σ below local norms. High correlation with severe incoming weather.")
+    st.markdown("<br>", unsafe_allow_html=True)
 
-        with st.expander("🔍 View Statistical Methodology"):
-            st.markdown("""
-            * **Temperature Model:** 2-Component Gaussian Mixture Model (GMM) captures bimodal peaks.
-            * **Local Z-Score:** Calculates $Z = |(x - \mu) / \sigma|$ against exact City+Season limits.
-            * **Context Engine:** Isolates 95% CI boundaries for robust baseline tracking.
-            * **Precipitation:** Utilizes Zero-Inflated Poisson 99th percentile logic.
-            * **Pressure Weights:** Maps $2\sigma$ low-variance pressure drops directly to storm risks.
-            """)
+    # 4. Statistical Context Details
+    with st.expander("📊 View Mathematical Context & Baseline Data", expanded=False):
+        st.write(f"**Target Geography:** {target_city} | **Current Phase:** {target_season}")
+        st.write(f"**95% Confidence Interval (Normal Baseline):** {c_stats['ci_lower']:.2f}°C to {c_stats['ci_upper']:.2f}°C")
+        st.write(f"**Local Mean:** {c_stats['mean']:.2f}°C | **Local Standard Deviation:** {c_stats['std']:.2f}°C")
+        st.divider()
+        st.markdown("""
+        * **Temperature:** Modeled via 2-Component Gaussian Mixture Model (GMM). Z-Scores calculated via isolated City+Season matrices.
+        * **Precipitation:** Utilizes Zero-Inflated Poisson 99th percentile logic to exclude dry-day inflation.
+        * **Atmospherics:** Evaluates variance using localized standard deviation for pressure drops.
+        """)
+
 else:
-    with col2:
-        st.write("---")
-        st.info("👈 Adjust the environmental parameters and click **Generate** to run the anomaly engine.")
+    # Landing Page instructions before clicking run
+    st.info("👈 Please enter the environmental parameters in the sidebar and click **Execute Analysis**.")
