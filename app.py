@@ -8,118 +8,89 @@ from sklearn.preprocessing import OneHotEncoder
 import warnings
 warnings.filterwarnings('ignore')
 
-# --- SECTION 1: PAGE CONFIGURATION & PREMIUM CSS ---
+# --- SECTION 1: PAGE CONFIGURATION & ROOT CSS FIX ---
 st.set_page_config(page_title="Pakistan Weather Anomaly Engine", layout="wide", page_icon="⚡")
 
 st.markdown("""
     <style>
-    /* Global Theme - Ensure Dark Background Everywhere */
-    .stApp, .main { 
-        background-color: #0b0f19 !important; 
-        color: #e2e8f0 !important; 
-        font-family: 'Inter', sans-serif; 
-    }
-    
-    /* Sidebar Background */
-    [data-testid="stSidebar"] { 
-        background-color: #111827 !important; 
-        border-right: 1px solid #1f2937 !important; 
-    }
-    
-    /* ---------------------------------------------------
-       UI FIX: WIDGET TEXT VISIBILITY (Main & Sidebar)
-       --------------------------------------------------- */
-    
-    /* 1. Labels for ALL inputs (Target City, Humidity, etc.) */
-    label[data-testid="stWidgetLabel"] p,
-    label[data-testid="stWidgetLabel"] span {
-        color: #f8fafc !important; /* Bright white for labels */
-        font-weight: 600 !important;
-        font-size: 1rem !important;
+    /* 1. Global Theme Reset */
+    .stApp, .main, header, [data-testid="stSidebar"] {
+        background-color: #0b0f19 !important;
+        color: #e2e8f0 !important;
     }
 
-    /* 2. Selectbox (Dropdown) styling */
-    div[data-baseweb="select"] > div {
-        background-color: #1f2937 !important;
-        color: #ffffff !important;
-        border-color: #374151 !important;
-    }
-    div[data-baseweb="select"] span {
-        color: #ffffff !important;
-    }
-    ul[data-baseweb="menu"] {
-        background-color: #1f2937 !important;
-    }
-    li[data-baseweb="menu-item"] {
-        color: #ffffff !important;
+    /* 2. Fix All Standard Text and Headers globally */
+    h1, h2, h3, h4, h5, h6, p, span, div, li, label {
+        color: #e2e8f0 !important;
     }
     
-    /* 3. Number Input styling */
-    input[type="number"] {
-        color: #ffffff !important;
-        background-color: #1f2937 !important;
-        -webkit-text-fill-color: #ffffff !important;
-    }
+    /* 3. Fix Input Widgets (Dropdowns, Inputs) - Force Dark Background & White Text */
+    div[data-baseweb="select"] > div,
+    input[type="number"],
     div[data-baseweb="input"] {
         background-color: #1f2937 !important;
+        color: #ffffff !important;
+        -webkit-text-fill-color: #ffffff !important;
         border-color: #374151 !important;
     }
-
-    /* 4. Slider Text styling */
-    div[data-testid="stSliderTickBarMin"], 
-    div[data-testid="stSliderTickBarMax"] {
-        color: #9ca3af !important; /* Muted grey for min/max labels */
-    }
-    div[data-baseweb="slider"] div[role="slider"] > div {
-        color: #ffffff !important; /* White for the floating value */
-    }
-    div[data-baseweb="slider"] p {
+    
+    /* Dropdown Menus specifically */
+    ul[data-baseweb="menu"], 
+    li[data-baseweb="menu-item"] {
+        background-color: #1f2937 !important;
         color: #ffffff !important;
     }
     
-    /* ---------------------------------------------------
-       PREMIUM DASHBOARD ELEMENTS
-       --------------------------------------------------- */
-       
-    /* KPI Metric Cards */
+    /* 4. Fix Sliders - Ensure numbers are a bright blue */
+    div[data-testid="stSliderTickBarMin"], 
+    div[data-testid="stSliderTickBarMax"],
+    div[data-baseweb="slider"] div {
+        color: #60a5fa !important; 
+    }
+
+    /* 5. Fix Expanders ("View Statistical Methodology") */
+    div[data-testid="stExpander"] details { 
+        border: 1px solid #374151 !important; 
+        border-radius: 12px !important; 
+        background-color: #111827 !important; 
+    }
+    /* Force text inside expander to be light */
+    div[data-testid="stExpanderDetails"],
+    div[data-testid="stExpanderDetails"] p,
+    div[data-testid="stExpanderDetails"] li,
+    div[data-testid="stExpanderDetails"] span { 
+        background-color: #111827 !important; 
+        color: #d1d5db !important; 
+    }
+    
+    /* 6. Premium Metric Cards (Glassmorphism) */
     div[data-testid="metric-container"] {
         background: linear-gradient(145deg, #1f2937, #111827) !important;
         border: 1px solid #374151 !important; 
         border-radius: 16px !important;
         padding: 24px !important; 
-        box-shadow: 0 10px 25px rgba(0,0,0,0.2) !important;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.4) !important;
     }
+    /* Metric Card Labels (e.g., "Predicted Temp") */
     div[data-testid="metric-container"] label p { 
         color: #9ca3af !important; 
-        font-weight: 600; 
-        text-transform: uppercase; 
+        font-weight: 600 !important; 
+        text-transform: uppercase !important; 
     }
+    /* Metric Card Values */
     div[data-testid="metric-container"] div[data-testid="stMetricValue"] > div { 
         color: #60a5fa !important; 
-        font-weight: 800; 
+        font-weight: 800 !important; 
     }
     
-    /* Alerts */
+    /* 7. Alerts */
     .stAlert { border-radius: 12px !important; border: none !important; }
     
-    /* Expanders */
-    div[data-testid="stExpander"] details { 
-        border: 1px solid #374151 !important; 
-        border-radius: 12px !important; 
-        background: #111827 !important; 
+    /* 8. Fix Input Labels globally */
+    label[data-testid="stWidgetLabel"] p {
+        color: #9ca3af !important;
+        font-weight: 600 !important;
     }
-    div[data-testid="stExpanderDetails"] { 
-        background-color: #111827 !important; 
-        color: #d1d5db !important; 
-    }
-    
-    /* Headers and Base Text */
-    h1, h2, h3 { color: #f8fafc !important; font-weight: 800; }
-    hr { border-color: #374151 !important; }
-    p, span, div { color: #e2e8f0; } /* Baseline fallback */
-    
-    /* Fix for text rendered directly in markdown */
-    .stMarkdown p { color: #e2e8f0 !important; }
     </style>
     """, unsafe_allow_html=True)
 
