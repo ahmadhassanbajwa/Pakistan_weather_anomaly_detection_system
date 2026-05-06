@@ -17,48 +17,63 @@ st.markdown("""
     .main { background-color: #0b0f19; color: #e2e8f0; font-family: 'Inter', sans-serif; }
     
     /* ---------------------------------------------------
-       UI FIX: FORCE TEXT VISIBILITY IN INPUT WIDGETS
+       UI FIX: AGGRESSIVE WIDGET TEXT VISIBILITY
        --------------------------------------------------- */
     
-    /* Change text color for standard body text and markdown */
-    p, span, div { color: #e2e8f0; }
-
-    /* Force Selectbox (Dropdown) text to be visible */
+    /* 1. Fix Selectbox (Dropdown) Text */
     div[data-baseweb="select"] > div {
         background-color: #1f2937 !important;
         color: #ffffff !important;
-        border-color: #374151 !important;
     }
     
-    /* Force Dropdown Menu Items to be visible */
+    /* Target the text span specifically inside the selectbox */
+    div[data-baseweb="select"] span {
+        color: #ffffff !important;
+    }
+    
+    /* Fix Dropdown Menu items when opened */
     ul[data-baseweb="menu"] {
         background-color: #1f2937 !important;
     }
     li[data-baseweb="menu-item"] {
         color: #ffffff !important;
     }
-
-    /* Force Number Input text to be visible */
+    
+    /* 2. Fix Number Input Text */
     input[type="number"] {
         color: #ffffff !important;
         background-color: #1f2937 !important;
-    }
-
-    /* Force Slider values and labels to be visible */
-    div[data-testid="stSliderTickBarMin"], 
-    div[data-testid="stSliderTickBarMax"], 
-    div[data-baseweb="slider"] div {
-        color: #60a5fa !important; /* Bright blue for slider numbers */
+        -webkit-text-fill-color: #ffffff !important; /* Forces Safari/Chrome to respect the color */
     }
     
-    /* Label styling for all inputs (e.g., "Target City", "Humidity (%)") */
+    /* Target the container wrapping the number input */
+    div[data-baseweb="input"] {
+        background-color: #1f2937 !important;
+    }
+
+    /* 3. Fix Slider Text */
+    /* Min/Max bounds */
+    div[data-testid="stSliderTickBarMin"], 
+    div[data-testid="stSliderTickBarMax"] {
+        color: #60a5fa !important;
+    }
+    /* The floating value bubble above the slider */
+    div[data-baseweb="slider"] div[role="slider"] > div {
+        color: #ffffff !important;
+    }
+    /* Any other stray slider text */
+    div[data-baseweb="slider"] p {
+        color: #ffffff !important;
+    }
+    
+    /* 4. Fix Labels above all inputs */
     label[data-testid="stWidgetLabel"] p {
         color: #9ca3af !important;
         font-weight: 600 !important;
         font-size: 1rem !important;
     }
 
-    /* Sidebar Styling */
+    /* Sidebar Background */
     [data-testid="stSidebar"] { background-color: #111827; border-right: 1px solid #1f2937; }
     
     /* ---------------------------------------------------
@@ -92,10 +107,11 @@ st.markdown("""
     div[data-testid="stExpanderDetails"] { background-color: #111827; color: #d1d5db !important; padding: 20px; }
     div[data-testid="stExpanderDetails"] * { color: #d1d5db !important; }
     
-    /* Headers */
+    /* Headers and Base Text */
     h1 { color: #f8fafc !important; font-weight: 800; padding-bottom: 0.5rem; }
     h2, h3 { color: #e2e8f0 !important; font-weight: 700; }
     hr { border-color: #374151; }
+    p, span, div { color: #e2e8f0; } /* Set baseline text color for anything not explicitly targeted */
     </style>
     """, unsafe_allow_html=True)
 
