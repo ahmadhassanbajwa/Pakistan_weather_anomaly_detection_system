@@ -16,10 +16,56 @@ st.markdown("""
     /* Global Theme */
     .main { background-color: #0b0f19; color: #e2e8f0; font-family: 'Inter', sans-serif; }
     
+    /* ---------------------------------------------------
+       UI FIX: FORCE TEXT VISIBILITY IN INPUT WIDGETS
+       --------------------------------------------------- */
+    
+    /* Change text color for standard body text and markdown */
+    p, span, div { color: #e2e8f0; }
+
+    /* Force Selectbox (Dropdown) text to be visible */
+    div[data-baseweb="select"] > div {
+        background-color: #1f2937 !important;
+        color: #ffffff !important;
+        border-color: #374151 !important;
+    }
+    
+    /* Force Dropdown Menu Items to be visible */
+    ul[data-baseweb="menu"] {
+        background-color: #1f2937 !important;
+    }
+    li[data-baseweb="menu-item"] {
+        color: #ffffff !important;
+    }
+
+    /* Force Number Input text to be visible */
+    input[type="number"] {
+        color: #ffffff !important;
+        background-color: #1f2937 !important;
+    }
+
+    /* Force Slider values and labels to be visible */
+    div[data-testid="stSliderTickBarMin"], 
+    div[data-testid="stSliderTickBarMax"], 
+    div[data-baseweb="slider"] div {
+        color: #60a5fa !important; /* Bright blue for slider numbers */
+    }
+    
+    /* Label styling for all inputs (e.g., "Target City", "Humidity (%)") */
+    label[data-testid="stWidgetLabel"] p {
+        color: #9ca3af !important;
+        font-weight: 600 !important;
+        font-size: 1rem !important;
+    }
+
     /* Sidebar Styling */
     [data-testid="stSidebar"] { background-color: #111827; border-right: 1px solid #1f2937; }
     
-    /* KPI Metric Cards (Glassmorphism) */
+    /* ---------------------------------------------------
+       PREMIUM DASHBOARD ELEMENTS (Glassmorphism)
+       --------------------------------------------------- */
+       
+    /* KPI Metric Cards */
     div[data-testid="metric-container"] {
         background: linear-gradient(145deg, #1f2937, #111827);
         border: 1px solid #374151; 
@@ -52,6 +98,8 @@ st.markdown("""
     hr { border-color: #374151; }
     </style>
     """, unsafe_allow_html=True)
+
+# ... [KEEP THE REST OF YOUR APP.PY CODE EXACTLY THE SAME FROM HERE] ...
 
 # --- SECTION 2: BACKEND ENGINE (Cached for Speed) ---
 @st.cache_resource
