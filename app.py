@@ -195,7 +195,7 @@ if st.button("Generate Regional Analysis"):
     
     prediction = model.predict(input_df)[0]
     
-    # 3. Calculate the valid Seasonal Z-Score for the Evaluators
+    # 3. Calculate the valid Seasonal Z-Score
     if c_stats['std'] > 0:
         seasonal_z = abs((prev_temp - c_stats['mean']) / c_stats['std'])
     else:
@@ -204,7 +204,7 @@ if st.button("Generate Regional Analysis"):
     with col2:
         st.subheader("Analysis Output")
         
-        # Display side-by-side metrics including the new Z-Score
+        # Display side-by-side metrics
         m1, m2 = st.columns(2)
         m1.metric(label=f"Predicted {target_city} Temp", value=f"{prediction:.2f} °C")
         m2.metric(label="Seasonal Z-Score", value=f"{seasonal_z:.2f} σ")
@@ -216,14 +216,16 @@ if st.button("Generate Regional Analysis"):
             st.error(f"🚨 EXTREME CLIMATE EVENT (GMM Score: {input_gmm_score:.2f})")
             st.markdown(f"**Insight:** This temperature ranks in the top 0.5% of extreme probabilities country-wide.")
             
-        # B. Local Seasonal Anomaly (Confidence Interval Breach)
-        elif prev_temp < c_stats['ci_lower'] or prev_temp > c_stats['ci_upper']:
-            st.warning(f"⚠️ LOCAL SEASONAL DEVIATION")
-            st.markdown(f"**Insight:** {prev_temp}°C falls significantly outside the 95% probability range for {target_city} during {target_season}. (Z-Score: {seasonal_z:.2f})")
-            
+        # B. Local Seasonal Anomaly (Z-Score Breach)
+        elif seasonal_z > 3.0:
+            st.error(f"⚠️ SEVERE LOCAL ANOMALY (Z-Score: {seasonal_z:.2f})")
+            st.markdown(f"**Insight:** {prev_temp}°C is a massive statistical outlier. It exceeds the 3σ threshold for {target_city} during {target_season}.")
+        elif seasonal_z > 2.0:
+            st.warning(f"⚠️ LOCAL SEASONAL DEVIATION (Z-Score: {seasonal_z:.2f})")
+            st.markdown(f"**Insight:** {prev_temp}°C is unusually high/low. It exceeds the 2σ standard deviation boundary for normal {target_season} patterns in {target_city}.")
         else:
-            st.success(f"✅ NORMAL LOCAL PATTERN")
-            st.markdown(f"**Insight:** Temperature aligns perfectly with {target_city}'s historical {target_season} distribution. (Z-Score: {seasonal_z:.2f})")
+            st.success(f"✅ NORMAL LOCAL PATTERN (Z-Score: {seasonal_z:.2f})")
+            st.markdown(f"**Insight:** Temperature aligns with {target_city}'s historical {target_season} distribution (within normal variance).")
 
         # C. Zero-Inflated Poisson Precipitation Check
         if precip > baselines[target_city]['rain_99th'] and precip > 0:
@@ -240,10 +242,10 @@ if st.button("Generate Regional Analysis"):
         with st.expander("View Statistical Methodology"):
             st.write(f"""
             - **Temperature Model:** 2-Component Gaussian Mixture Model (GMM) captured bimodal peaks.
-            - **Context Engine:** Isolated 95% Confidence Interval boundaries via One-Hot City + Season combinations.
-            - **Local Z-Score:** Calculated specifically against seasonal baselines to ensure mathematical validity.
-            - **Precipitation:** Utilized Zero-Inflated Poisson upper-bound limits (99th percentile logic) to filter out normal "dry" days.
-            - **Pressure Weights:** Identified pressure variance as a highly stable feature, mapping $2\sigma$ deviations to storm risk indicators.
+            - **Local Z-Score:** Calculated against specific City + Season standard deviations to identify >2σ and >3σ deviations.
+            - **Context Engine:** Isolated 95% Confidence Interval boundaries for true baseline tracking.
+            - **Precipitation:** Utilized Zero-Inflated Poisson upper-bound limits (99th percentile logic).
+            - **Pressure Weights:** Identified pressure variance as a highly stable feature, mapping $2\sigma$ drops to storm risk.
             """)
 else:
     with col2:
