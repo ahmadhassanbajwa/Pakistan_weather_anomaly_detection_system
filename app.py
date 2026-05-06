@@ -13,25 +13,40 @@ st.set_page_config(page_title="Pakistan Weather Anomaly Engine", layout="wide", 
 
 st.markdown("""
     <style>
-    /* Global Theme */
-    .main { background-color: #0b0f19; color: #e2e8f0; font-family: 'Inter', sans-serif; }
+    /* Global Theme - Ensure Dark Background Everywhere */
+    .stApp, .main { 
+        background-color: #0b0f19 !important; 
+        color: #e2e8f0 !important; 
+        font-family: 'Inter', sans-serif; 
+    }
+    
+    /* Sidebar Background */
+    [data-testid="stSidebar"] { 
+        background-color: #111827 !important; 
+        border-right: 1px solid #1f2937 !important; 
+    }
     
     /* ---------------------------------------------------
-       UI FIX: AGGRESSIVE WIDGET TEXT VISIBILITY
+       UI FIX: WIDGET TEXT VISIBILITY (Main & Sidebar)
        --------------------------------------------------- */
     
-    /* 1. Fix Selectbox (Dropdown) Text */
+    /* 1. Labels for ALL inputs (Target City, Humidity, etc.) */
+    label[data-testid="stWidgetLabel"] p,
+    label[data-testid="stWidgetLabel"] span {
+        color: #f8fafc !important; /* Bright white for labels */
+        font-weight: 600 !important;
+        font-size: 1rem !important;
+    }
+
+    /* 2. Selectbox (Dropdown) styling */
     div[data-baseweb="select"] > div {
         background-color: #1f2937 !important;
         color: #ffffff !important;
+        border-color: #374151 !important;
     }
-    
-    /* Target the text span specifically inside the selectbox */
     div[data-baseweb="select"] span {
         color: #ffffff !important;
     }
-    
-    /* Fix Dropdown Menu items when opened */
     ul[data-baseweb="menu"] {
         background-color: #1f2937 !important;
     }
@@ -39,79 +54,72 @@ st.markdown("""
         color: #ffffff !important;
     }
     
-    /* 2. Fix Number Input Text */
+    /* 3. Number Input styling */
     input[type="number"] {
         color: #ffffff !important;
         background-color: #1f2937 !important;
-        -webkit-text-fill-color: #ffffff !important; /* Forces Safari/Chrome to respect the color */
+        -webkit-text-fill-color: #ffffff !important;
     }
-    
-    /* Target the container wrapping the number input */
     div[data-baseweb="input"] {
         background-color: #1f2937 !important;
+        border-color: #374151 !important;
     }
 
-    /* 3. Fix Slider Text */
-    /* Min/Max bounds */
+    /* 4. Slider Text styling */
     div[data-testid="stSliderTickBarMin"], 
     div[data-testid="stSliderTickBarMax"] {
-        color: #60a5fa !important;
+        color: #9ca3af !important; /* Muted grey for min/max labels */
     }
-    /* The floating value bubble above the slider */
     div[data-baseweb="slider"] div[role="slider"] > div {
-        color: #ffffff !important;
+        color: #ffffff !important; /* White for the floating value */
     }
-    /* Any other stray slider text */
     div[data-baseweb="slider"] p {
         color: #ffffff !important;
     }
     
-    /* 4. Fix Labels above all inputs */
-    label[data-testid="stWidgetLabel"] p {
-        color: #9ca3af !important;
-        font-weight: 600 !important;
-        font-size: 1rem !important;
-    }
-
-    /* Sidebar Background */
-    [data-testid="stSidebar"] { background-color: #111827; border-right: 1px solid #1f2937; }
-    
     /* ---------------------------------------------------
-       PREMIUM DASHBOARD ELEMENTS (Glassmorphism)
+       PREMIUM DASHBOARD ELEMENTS
        --------------------------------------------------- */
        
     /* KPI Metric Cards */
     div[data-testid="metric-container"] {
-        background: linear-gradient(145deg, #1f2937, #111827);
-        border: 1px solid #374151; 
-        border-radius: 16px;
-        padding: 24px; 
-        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease;
+        background: linear-gradient(145deg, #1f2937, #111827) !important;
+        border: 1px solid #374151 !important; 
+        border-radius: 16px !important;
+        padding: 24px !important; 
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2) !important;
     }
-    div[data-testid="metric-container"]:hover { 
-        transform: translateY(-4px); 
-        box-shadow: 0 15px 35px rgba(0,0,0,0.4); 
-        border-color: #3b82f6;
+    div[data-testid="metric-container"] label p { 
+        color: #9ca3af !important; 
+        font-weight: 600; 
+        text-transform: uppercase; 
+    }
+    div[data-testid="metric-container"] div[data-testid="stMetricValue"] > div { 
+        color: #60a5fa !important; 
+        font-weight: 800; 
     }
     
-    /* Metric Typography */
-    div[data-testid="metric-container"] label p { color: #9ca3af !important; font-weight: 600; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em; }
-    div[data-testid="metric-container"] div[data-testid="stMetricValue"] > div { color: #60a5fa !important; font-weight: 800; font-size: 2.2rem;}
-    
-    /* Alerts and Info Boxes */
-    .stAlert { border-radius: 12px !important; border: none !important; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    /* Alerts */
+    .stAlert { border-radius: 12px !important; border: none !important; }
     
     /* Expanders */
-    div[data-testid="stExpander"] details { border: 1px solid #374151; border-radius: 12px; overflow: hidden; background: #111827; }
-    div[data-testid="stExpanderDetails"] { background-color: #111827; color: #d1d5db !important; padding: 20px; }
-    div[data-testid="stExpanderDetails"] * { color: #d1d5db !important; }
+    div[data-testid="stExpander"] details { 
+        border: 1px solid #374151 !important; 
+        border-radius: 12px !important; 
+        background: #111827 !important; 
+    }
+    div[data-testid="stExpanderDetails"] { 
+        background-color: #111827 !important; 
+        color: #d1d5db !important; 
+    }
     
     /* Headers and Base Text */
-    h1 { color: #f8fafc !important; font-weight: 800; padding-bottom: 0.5rem; }
-    h2, h3 { color: #e2e8f0 !important; font-weight: 700; }
-    hr { border-color: #374151; }
-    p, span, div { color: #e2e8f0; } /* Set baseline text color for anything not explicitly targeted */
+    h1, h2, h3 { color: #f8fafc !important; font-weight: 800; }
+    hr { border-color: #374151 !important; }
+    p, span, div { color: #e2e8f0; } /* Baseline fallback */
+    
+    /* Fix for text rendered directly in markdown */
+    .stMarkdown p { color: #e2e8f0 !important; }
     </style>
     """, unsafe_allow_html=True)
 
