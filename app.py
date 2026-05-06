@@ -6,248 +6,140 @@ from sklearn.mixture import GaussianMixture
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import OneHotEncoder
 import warnings
-
 warnings.filterwarnings('ignore')
 
-# --- SECTION 1: PAGE CONFIGURATION AND STYLING ---
-st.set_page_config(page_title="Pakistan Regional Weather Predictor", layout="wide")
-
-# Custom CSS for a modern, vibrant dashboard with fixed text visibility
+# --- SECTION 1: PAGE CONFIGURATION & ENHANCED GUI CSS ---
+st.set_page_config(page_title="Pakistan Weather Predictor", layout="wide", page_icon="🌦️")
 st.markdown("""
     <style>
-    .main { background-color: #0e1117; color: white; }
-    
-    /* Metric Card Background */
+    .main { background-color: #0d1117; color: #e6edf3; }
     div[data-testid="metric-container"] {
-        background-color: #161b22;
-        border: 1px solid #30363d;
-        border-radius: 15px;
-        padding: 20px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        background: linear-gradient(145deg, #161b22, #1c2128);
+        border: 1px solid #30363d; border-radius: 12px;
+        padding: 20px; box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+        transition: transform 0.2s ease;
     }
-    
-    /* Metric Label */
-    div[data-testid="metric-container"] label p {
-        color: #8b949e !important; 
-    }
-    
-    /* Metric Value */
-    div[data-testid="metric-container"] div[data-testid="stMetricValue"] > div {
-        color: #ffffff !important; 
-    }
-
-    /* Expander Container Styling */
-    div[data-testid="stExpander"] details {
-        border: 1px solid #30363d;
-        border-radius: 10px;
-        overflow: hidden;
-    }
-    
-    /* Expander Body Background */
-    div[data-testid="stExpanderDetails"] {
-        background-color: #161b22;
-    }
-    
-    /* Force Expander Body Text to White */
-    div[data-testid="stExpanderDetails"] p,
-    div[data-testid="stExpanderDetails"] li,
-    div[data-testid="stExpanderDetails"] span {
-        color: #ffffff !important; 
-    }
+    div[data-testid="metric-container"]:hover { transform: translateY(-3px); }
+    div[data-testid="metric-container"] label p { color: #8b949e !important; font-weight: 600; }
+    div[data-testid="metric-container"] div[data-testid="stMetricValue"] > div { color: #58a6ff !important; font-weight: 700;}
+    div[data-testid="stExpander"] details { border: 1px solid #30363d; border-radius: 10px; overflow: hidden; }
+    div[data-testid="stExpanderDetails"] { background-color: #161b22; color: #c9d1d9 !important; }
+    div[data-testid="stExpanderDetails"] * { color: #c9d1d9 !important; }
+    h1, h2, h3 { color: #ffffff !important; }
+    .stAlert { border-radius: 10px !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- SECTION 2: DATA PREPROCESSING AND ADVANCED MODELING ---
+# --- SECTION 2: BACKEND ENGINE ---
 @st.cache_resource
 def build_anomaly_aware_model():
     df = pd.read_csv('pakistan_weather.csv')
+    df_clean = df.dropna(subset=['tavg', 'humidity', 'pressure', 'wind_speed']).copy()
     
-    # Clean baseline features
-    required_cols = ['tavg', 'humidity', 'pressure', 'wind_speed']
-    df_clean = df.dropna(subset=required_cols).copy()
-    
-    # 1. GENERATE SEASONAL MAPPING (For training data background context)
+    # Standardize Season & Precipitation logic
     if 'date' in df_clean.columns:
         df_clean['date'] = pd.to_datetime(df_clean['date'])
-        df_clean['season'] = df_clean['date'].dt.month.map(
-            lambda x: 'Winter' if x in [12, 1, 2] else 
-                     ('Spring' if x in [3, 4, 5] else 
-                     ('Summer' if x in [6, 7, 8] else 'Autumn'))
-        )
-    else:
-        df_clean['season'] = 'Summer'
-        
-    # Normalize Precipitation column if it exists
+        df_clean['season'] = df_clean['date'].dt.month.map(lambda x: 'Winter' if x in [12,1,2] else ('Spring' if x in [3,4,5] else ('Summer' if x in [6,7,8] else 'Autumn')))
+    else: df_clean['season'] = 'Summer'
+    
     if 'precipitation' not in df_clean.columns:
         for col in ['prcp', 'precip', 'rain']:
             if col in df_clean.columns:
-                df_clean = df_clean.rename(columns={col: 'precipitation'})
+                df_clean.rename(columns={col: 'precipitation'}, inplace=True)
                 break
 
-    # 2. GMM PROBABILITY MODEL (Bimodal Temperature Handling)
+    # GMM Bimodal Temp Modeling
     tavg_data = df_clean['tavg'].values.reshape(-1, 1)
-    gmm = GaussianMixture(n_components=2, covariance_type='full', random_state=42)
-    gmm.fit(tavg_data)
+    gmm = GaussianMixture(n_components=2, covariance_type='full', random_state=42).fit(tavg_data)
+    df_clean['gmm_score'] = -gmm.score_samples(tavg_data)
+    gmm_thresh = np.percentile(df_clean['gmm_score'], 99.5)
     
-    # Score historical data to define the 99.5th percentile global threshold
-    df_clean['gmm_anomaly_score'] = -gmm.score_samples(tavg_data)
-    gmm_threshold = np.percentile(df_clean['gmm_anomaly_score'], 99.5)
-    
-    # 3. CONTEXTUAL BASELINES (City + Season)
+    # Localized City + Season Statistical Baselines
     baselines = {}
     for city in df_clean['city'].unique():
-        city_df = df_clean[df_clean['city'] == city]
+        cdf = df_clean[df_clean['city'] == city]
+        baselines[city] = {'pres_mean': cdf['pressure'].mean(), 'pres_std': cdf['pressure'].std(), 'seasons': {}}
         
-        baselines[city] = {
-            'pres_mean': city_df['pressure'].mean(),
-            'pres_std': city_df['pressure'].std(),
-            'seasons': {}
-        }
+        # Zero-Inflated Poisson precipitation limits
+        rain = cdf['precipitation'].dropna() if 'precipitation' in cdf.columns else []
+        baselines[city]['rain_99th'] = np.percentile(rain, 99) if len(rain)>0 else 0
         
-        # Precipitation stats (Zero-Inflated/Poisson context)
-        if 'precipitation' in city_df.columns:
-            rain_data = city_df['precipitation'].dropna()
-            baselines[city]['rain_lambda'] = rain_data.mean() if len(rain_data) > 0 else 0
-            baselines[city]['rain_99th'] = np.percentile(rain_data, 99) if len(rain_data) > 0 else 0
-        else:
-            baselines[city]['rain_lambda'], baselines[city]['rain_99th'] = 0, 0
-            
-        # Seasonal Temperature Confidence Intervals
         for season in df_clean['season'].unique():
-            season_df = city_df[city_df['season'] == season]['tavg'].dropna()
-            n = len(season_df)
-            if n > 1:
-                mean = np.mean(season_df)
-                std_dev = np.std(season_df, ddof=1)
-                se = std_dev / np.sqrt(n)
-                ci = stats.t.interval(0.95, n-1, loc=mean, scale=se)
-            else:
-                mean, std_dev, ci = 0, 0, (0, 0)
-                
-            baselines[city]['seasons'][season] = {
-                'mean': mean, 'std': std_dev, 'ci_lower': ci[0], 'ci_upper': ci[1]
-            }
+            sdf = cdf[cdf['season'] == season]['tavg'].dropna()
+            n, mean, std = len(sdf), np.mean(sdf) if len(sdf)>0 else 0, np.std(sdf, ddof=1) if len(sdf)>1 else 0
+            ci = stats.t.interval(0.95, n-1, loc=mean, scale=std/np.sqrt(n)) if n>1 else (0,0)
+            baselines[city]['seasons'][season] = {'mean': mean, 'std': std, 'ci_lower': ci[0], 'ci_upper': ci[1]}
 
-    # 4. REGRESSION MODELING (Trained on GMM + City + Season)
-    encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
-    cat_encoded = encoder.fit_transform(df_clean[['city', 'season']])
-    cat_cols = encoder.get_feature_names_out(['city', 'season'])
-    cat_df = pd.DataFrame(cat_encoded, columns=cat_cols, index=df_clean.index)
+    # OLS Regression
+    enc = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
+    cat_df = pd.DataFrame(enc.fit_transform(df_clean[['city', 'season']]), columns=enc.get_feature_names_out(), index=df_clean.index)
+    X = pd.concat([df_clean[['humidity', 'pressure', 'wind_speed', 'gmm_score']], cat_df], axis=1)
+    model = LinearRegression().fit(X, df_clean['tavg'])
     
-    X = pd.concat([df_clean[['humidity', 'pressure', 'wind_speed', 'gmm_anomaly_score']], cat_df], axis=1)
-    y = df_clean['tavg']
-    
-    model = LinearRegression().fit(X, y)
-    
-    return model, encoder, gmm, gmm_threshold, baselines, cat_cols
+    return model, enc, gmm, gmm_thresh, baselines, list(enc.get_feature_names_out())
 
-# Initialize the backend engine
 model, encoder, gmm, gmm_threshold, baselines, cat_cols = build_anomaly_aware_model()
 
-# --- SECTION 3: INTERACTIVE USER INTERFACE ---
+# --- SECTION 3: FRONTEND UI ---
 st.title("🌦️ Regional Anomaly-Aware Predictor")
-st.markdown(f"**Developer:** Evaluators | **Framework:** GMM Anomaly Scoring & Poisson Analysis")
-
-# Layout Columns
-col1, col2 = st.columns([1, 1], gap="large")
+st.markdown("**Developer:** Evaluators | **Framework:** GMM Anomaly Engine & Poisson Mapping")
+col1, col2 = st.columns([1.1, 1], gap="large")
 
 with col1:
     st.subheader("Control Panel")
-    st.info("Input real-time conditions to detect localized statistical anomalies.")
-    
-    # Categorical Inputs
     c1, c2 = st.columns(2)
-    with c1:
-        target_city = st.selectbox("Target City", options=sorted(list(baselines.keys())))
-    with c2:
-        target_season = st.selectbox("Current Season", options=["Winter", "Spring", "Summer", "Autumn"])
-        
-    c_stats = baselines[target_city]['seasons'].get(target_season, {'mean': 0, 'std': 0, 'ci_lower': 0, 'ci_upper': 0})
+    target_city = c1.selectbox("Target City", sorted(baselines.keys()))
+    target_season = c2.selectbox("Current Season", ["Winter", "Spring", "Summer", "Autumn"])
+    c_stats = baselines[target_city]['seasons'].get(target_season, {'mean':0, 'std':0, 'ci_lower':0, 'ci_upper':0})
     
-    # Dynamic Statistical Context
-    st.markdown(f"""
-    **Context:** The 95% Confidence Interval for **{target_city}** in **{target_season}** 
-    is historically bounded between **{c_stats['ci_lower']:.2f}°C** and **{c_stats['ci_upper']:.2f}°C**.
-    """)
+    st.info(f"📊 **Context:** The 95% Confidence Interval for **{target_city}** in **{target_season}** is historically bounded between **{c_stats['ci_lower']:.2f}°C** and **{c_stats['ci_upper']:.2f}°C**.")
     
-    # Environmental Sliders
-    hum = st.slider("Humidity (%)", min_value=0, max_value=100, value=60)
-    pres = st.slider("Pressure (hPa)", min_value=980.0, max_value=1050.0, value=1011.0, step=0.1)
-    wind = st.slider("Wind Speed (km/h)", min_value=0.0, max_value=60.0, value=12.0, step=0.1)
-    precip = st.slider("Precipitation (mm)", min_value=0.0, max_value=250.0, value=0.0, step=1.0)
-    
-    prev_temp = st.slider(f"Current Avg Temp in {target_city} (°C)", 
-                          min_value=-25.0, max_value=55.0, 
-                          value=float(round(c_stats['mean'], 1)), step=0.1)
+    hum = st.slider("Humidity (%)", 0, 100, 60)
+    pres = st.slider("Pressure (hPa)", 980.0, 1050.0, 1011.0, 0.1)
+    wind = st.slider("Wind Speed (km/h)", 0.0, 60.0, 12.0, 0.1)
+    precip = st.slider("Precipitation (mm)", 0.0, 250.0, 0.0, 1.0)
+    prev_temp = st.slider(f"Current Avg Temp in {target_city} (°C)", -25.0, 55.0, float(round(c_stats['mean'], 1)), 0.1)
 
-# --- SECTION 4: PREDICTION AND STATISTICAL RESULTS ---
-if st.button("Generate Regional Analysis"):
-    # 1. Calculate the real-time GMM Anomaly Score
-    input_gmm_score = -gmm.score_samples(np.array([[prev_temp]]))[0]
-    
-    # 2. Prepare Regression Input
-    input_cat = pd.DataFrame([[target_city, target_season]], columns=['city', 'season'])
-    encoded_cat = encoder.transform(input_cat)
-    input_vector = np.hstack([[hum, pres, wind, input_gmm_score], encoded_cat[0]])
-    
-    feature_names = ['humidity', 'pressure', 'wind_speed', 'gmm_anomaly_score'] + list(cat_cols)
-    input_df = pd.DataFrame([input_vector], columns=feature_names)
-    
-    prediction = model.predict(input_df)[0]
-    
-    # 3. Calculate the valid Seasonal Z-Score
-    if c_stats['std'] > 0:
-        seasonal_z = abs((prev_temp - c_stats['mean']) / c_stats['std'])
-    else:
-        seasonal_z = 0.0
+# --- SECTION 4: PREDICTION & LOGIC ---
+if st.button("Generate Regional Analysis", type="primary", use_container_width=True):
+    # Live Scoring & Prediction
+    in_gmm = -gmm.score_samples(np.array([[prev_temp]]))[0]
+    in_cat = encoder.transform(pd.DataFrame([[target_city, target_season]], columns=['city', 'season']))
+    in_vec = np.hstack([[hum, pres, wind, in_gmm], in_cat[0]])
+    pred = model.predict(pd.DataFrame([in_vec], columns=['humidity', 'pressure', 'wind_speed', 'gmm_score'] + cat_cols))[0]
+    sz = abs((prev_temp - c_stats['mean']) / c_stats['std']) if c_stats['std'] > 0 else 0.0
     
     with col2:
         st.subheader("Analysis Output")
-        
-        # Display side-by-side metrics
         m1, m2 = st.columns(2)
-        m1.metric(label=f"Predicted {target_city} Temp", value=f"{prediction:.2f} °C")
-        m2.metric(label="Seasonal Z-Score", value=f"{seasonal_z:.2f} σ")
+        m1.metric(f"Predicted {target_city} Temp", f"{pred:.2f} °C")
+        m2.metric("Seasonal Z-Score", f"{sz:.2f} σ")
         
-        # --- MULTI-LAYER ANOMALY DETECTION LOGIC ---
-        
-        # A. GMM Temperature Anomaly (Global Rarity)
-        if input_gmm_score > gmm_threshold:
-            st.error(f"🚨 EXTREME CLIMATE EVENT (GMM Score: {input_gmm_score:.2f})")
-            st.markdown(f"**Insight:** This temperature ranks in the top 0.5% of extreme probabilities country-wide.")
-            
-        # B. Local Seasonal Anomaly (Z-Score Breach)
-        elif seasonal_z > 3.0:
-            st.error(f"⚠️ SEVERE LOCAL ANOMALY (Z-Score: {seasonal_z:.2f})")
-            st.markdown(f"**Insight:** {prev_temp}°C is a massive statistical outlier. It exceeds the 3σ threshold for {target_city} during {target_season}.")
-        elif seasonal_z > 2.0:
-            st.warning(f"⚠️ LOCAL SEASONAL DEVIATION (Z-Score: {seasonal_z:.2f})")
-            st.markdown(f"**Insight:** {prev_temp}°C is unusually high/low. It exceeds the 2σ standard deviation boundary for normal {target_season} patterns in {target_city}.")
+        # Cascading Anomaly Tiers
+        if in_gmm > gmm_threshold:
+            st.error(f"🚨 **EXTREME CLIMATE EVENT** (GMM Score: {in_gmm:.2f})\n\nThis temperature ranks in the top 0.5% of extreme probabilities country-wide.")
+        elif sz > 3.0:
+            st.error(f"⚠️ **SEVERE LOCAL ANOMALY**\n\n{prev_temp}°C is a massive statistical outlier exceeding the 3σ threshold for {target_city} ({target_season}).")
+        elif sz > 2.0:
+            st.warning(f"⚠️ **LOCAL SEASONAL DEVIATION**\n\n{prev_temp}°C exceeds the 2σ standard deviation boundary for normal {target_season} patterns.")
         else:
-            st.success(f"✅ NORMAL LOCAL PATTERN (Z-Score: {seasonal_z:.2f})")
-            st.markdown(f"**Insight:** Temperature aligns with {target_city}'s historical {target_season} distribution (within normal variance).")
+            st.success(f"✅ **NORMAL LOCAL PATTERN**\n\nTemperature aligns securely with historical variance for {target_city}.")
 
-        # C. Zero-Inflated Poisson Precipitation Check
+        # Multi-variable Environmental Checks
         if precip > baselines[target_city]['rain_99th'] and precip > 0:
-            st.error(f"🌧️ FLOOD/MONSOON WARNING")
-            st.markdown(f"**Precipitation Alert:** {precip}mm violently exceeds the 99th percentile historical Poisson distribution for {target_city} (Limit: {baselines[target_city]['rain_99th']:.1f}mm).")
+            st.error(f"🌧️ **FLOOD/MONSOON WARNING**\n\n{precip}mm violently exceeds the 99th percentile historical Poisson limit ({baselines[target_city]['rain_99th']:.1f}mm).")
+        if pres < (baselines[target_city]['pres_mean'] - 2*baselines[target_city]['pres_std']):
+            st.warning(f"🌪️ **SEVERE STORM RISK**\n\nAtmospheric pressure is >2σ below local norms. High correlation with severe incoming weather.")
 
-        # D. Pressure Storm Warning
-        pres_danger_zone = baselines[target_city]['pres_mean'] - (2 * baselines[target_city]['pres_std'])
-        if pres < pres_danger_zone:
-            st.warning(f"🌪️ SEVERE STORM RISK")
-            st.markdown(f"**Pressure Drop:** Atmospheric pressure ({pres} hPa) is more than 2σ below local norms. High correlation with incoming severe weather.")
-
-        # Documentation of Process
-        with st.expander("View Statistical Methodology"):
-            st.write(f"""
-            - **Temperature Model:** 2-Component Gaussian Mixture Model (GMM) captured bimodal peaks.
-            - **Local Z-Score:** Calculated against specific City + Season standard deviations to identify >2σ and >3σ deviations.
-            - **Context Engine:** Isolated 95% Confidence Interval boundaries for true baseline tracking.
-            - **Precipitation:** Utilized Zero-Inflated Poisson upper-bound limits (99th percentile logic).
-            - **Pressure Weights:** Identified pressure variance as a highly stable feature, mapping $2\sigma$ drops to storm risk.
+        with st.expander("🔍 View Statistical Methodology"):
+            st.markdown("""
+            * **Temperature Model:** 2-Component Gaussian Mixture Model (GMM) captures bimodal peaks.
+            * **Local Z-Score:** Calculates $Z = |(x - \mu) / \sigma|$ against exact City+Season limits.
+            * **Context Engine:** Isolates 95% CI boundaries for robust baseline tracking.
+            * **Precipitation:** Utilizes Zero-Inflated Poisson 99th percentile logic.
+            * **Pressure Weights:** Maps $2\sigma$ low-variance pressure drops directly to storm risks.
             """)
 else:
     with col2:
         st.write("---")
-        st.markdown("Select parameters and click **Generate** to run the prediction model.")
+        st.info("👈 Adjust the environmental parameters and click **Generate** to run the anomaly engine.")
